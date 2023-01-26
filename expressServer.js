@@ -70,4 +70,33 @@ app.listen(PORT, function (){
     console.log('the port is working')
 })
 
+ // fs.readFile('./pets.json', 'utf-8', (error, data) => {
+            //     if (error){
+            //         res.status(500).type('test/plain').send('Internal Server Error')
+            //     } 
+            //     let pets = JSON.parse(data)
+            //     pets.push(petObj)
+            //     fs.writeFile('./pets.json', JSON.stringify(pets), err => {
+            //         if (err) {
+            //             res.status(500).type('text/plain').send('Internal Server Error')
+            //         } else {
+            //             res.status(200).type('application/json').json(pets)
+            //         }
+            //     }) 
+            // }) 
+        // let id = req.params.id
+        // let petToUpdate = path[id]
+       
+        // Object.assign(petToUpdate, req.body)
 
+        // path[id] = petToUpdate
+
+        // fs.writeFile('./pets.json', JSON.stringify(path), (err) => {
+        //     if (err) {
+        //        res.status(500).type('text/plain').send('Internal Server Error')
+        //     } else {
+        //        res.status(200).type('application/json').json(path[id]);
+        //     }
+        // })
+        // console.log (path[id])
+    // }) 

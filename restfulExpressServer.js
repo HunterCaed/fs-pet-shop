@@ -1,123 +1,79 @@
-
-const { application, json } = require('express')
+const { Pool } = require('pg');
+const { application, json, query } = require('express')
 const express = require('express')
 const fs = require('fs')
 const app = express()
 const path = require('./pets.json')
+const client = require('./db')
 //const petsPath = path.join(_dirname, 'pets.json')
-
-//let petData = JSON.parse('./pets.json')
 
 const PORT = process.env.PORT || 4000
 
+const look = `
+SELECT *
+FROM pets
+`;
+
 app.use(express.json())
 
-
 app.route('/pets')
-    .get((req, res) => {  //generic .get that retrieves all pets at /pets
-        res.status(200).type('application/json').json(path)
-        console.log(path[1])
+    .get(async (req, res) => {  //get all from Database
+        try {
+            const result = await client.query(look)
+            res.json(result.rows)
+        } catch (err) {
+            res.status(500).json({ error: err});
+        }     
     })
 
-    .post((req, res) => { //posts new pets to pets.json
-        let petObj = req.body
-        console.log(req.body)
-        if(!petObj.age || !petObj.kind || !petObj.name || typeof(petObj.age) == "string" || petObj.kind.trim() == "" || petObj.name.trim() == "") {
-            res.status(404).type('text/plain').send('Bad Request')
-        } else {
-            fs.readFile('./pets.json', 'utf-8', (error, data) => {
-                if (error){
-                    res.status(500).type('test/plain').send('Internal Server Error')
-                } 
-                let pets = JSON.parse(data)
-                pets.push(petObj)
-                fs.writeFile('./pets.json', JSON.stringify(pets), err => {
-                    if (err) {
-                        res.status(500).type('text/plain').send('Internal Server Error')
-                    } else {
-                        res.status(200).type('application/json').json(pets)
-                    }
-                }) 
-            })
+    .post(async (req, res) => {  //INSERT INTO owners (name, age) VALUES ('John', 33); DB Insert
+        try {               
+                const { name, age, kind } = req.body;
+                const insert = await client.query('INSERT INTO pets (name, age, kind) VALUES ($1, $2, $3);', [name, age, kind])
+                res.json({ success: true, message: `Pet Added`}).status(201)
+                    
+        } catch (err){
+            res.status(500).json({ error: err })
+        }
+              
+    })
+ 
+app.route('/pets/:id')
+
+    .get(async (req, res) =>{ //.get with setting a var at /pets/:id //get 1
+        try {
+                const id = req.params.id     
+                const results = await client.query('SELECT * FROM pets WHERE id = $1;', [id])
+                res.json(results.rows[0])
+            }
+        catch (err){
+            res.status(500).json({ error: err})
+        }
+    })
+
+    .put(async (req, res) => { // .patch where we are inserting into the json file //UPDATE owners SET age = 30 WHERE name = 'Jane';
+        try {
+            const { name, age, kind } = req.body
+            const { id } = req.params    
+            await client.query('UPDATE pets SET name = $1, age = $2, kind = $3 WHERE id = $4', [name, age, kind, id])
+                
+            res.json({ message: `Updated id: ${id} Pet name: ${name}`}).status(204)
+        } catch (err) {
+            //res.status(500).type('text/plain').send('Internal Server Error .patch')
+            res.status(500).json({err})
+        }
+    })         
+    
+    .delete(async (req, res) => {
+        try {
+            const {id} = req.params
+            await client.query('DELETE FROM pets WHERE id = $1', [id])
+            res.json({ message: `Deleted id: ${id}`}).status(204)
+        } catch (err) {
+            res.status(500).json({err})
         }
     })
  
-
-
-// app.post('/pets/', function(req, res){
-//     req.on('data', function(data){
-//         let petObj = JSON.parse(data.toString())
-//         console.log(petObj);
-//     if(!petObj.age || !petObj.kind || !petObj.name || typeof(petObj.age) == "string" || petObj.kind.trim() == "" || petObj.name.trim() == "") {
-//         res.statusCode = 404;
-//         res.setHeader('Content-Type', 'text/plain');
-//         res.send('Bad Request')
-//     } else {  
-        
-//         fs.readFile('./pets.json', 'utf-8', function(error, data){
-//             if (error) {
-//                 console.log(err)
-//             } else {
-//                 var pets = JSON.parse(data)
-//                 pets.push(petObj)
-//                 fs.writeFile('./pets.json', JSON.stringify(pets), function(error){
-//                     if (error) {
-//                         console.log(error)
-//                     } else console.log(data) 
-//                 })
-//             }
-//         })
-//         res.statusCode = 200;
-//         res.setHeader('Content-Type', 'application/json');
-//         res.json(petObj)
-//         }
-//     })  
-// })
-
-
-app.route('/pets/:id')
-
-    .get((req, res) =>{ //.get with setting a var at /pets/:id
-        if(!path[req.params.id]) {
-            res.status(404).type('text/plain').send('Not Found')        
-        } else {       
-            res.status(200).type('application/json').send(path[req.params.id]);
-        }
-    })
-
-    .patch((req, res) => { // .patch where we are inserting into the json file
-        let id = req.params.id
-        let petToUpdate = path[id]
-       
-        Object.assign(petToUpdate, req.body)
-
-        path[id] = petToUpdate
-
-        fs.writeFile('./pets.json', JSON.stringify(path), (err) => {
-            if (err) {
-               res.status(500).type('text/plain').send('Internal Server Error')
-            } else {
-               res.status(200).type('application/json').json(path[id]);
-            }
-        })
-        console.log (path[id])
-    })  
-
-    .delete((req, res) => {
-        let id = req.params.id
-        let petToUpdate = path[id]
-
-        path.splice(id, 1) //splice's out the requsted elmenet in the array
-
-        fs.writeFile('./pets.json', JSON.stringify(path), (err) => {
-            if (err) {
-                res.status(500).type('text/plain').send('Internal Server Error')
-            } else {
-               res.status(200).type('application/json').json(petToUpdate);
-            }
-        })
-        
-    }) 
 
 app.listen(PORT, function(){
     console.log(`listening on port: 4000 `)
